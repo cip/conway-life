@@ -46,6 +46,7 @@ private fun LargeLifeScreen() {
     var useHashLife by remember { mutableStateOf(true) }
     var jumping by remember { mutableStateOf(false) }
     var jumpSize by remember { mutableIntStateOf(128) }
+    var checkpoints by remember { mutableStateOf(listOf<LifeCheckpoint>()) }
     val scope = rememberCoroutineScope()
     var cells by remember { mutableStateOf(setOf(Cell(1,0), Cell(2,1), Cell(0,2), Cell(1,2), Cell(2,2))) }
     var generation by remember { mutableIntStateOf(0) }
@@ -63,8 +64,8 @@ private fun LargeLifeScreen() {
         val x = floor(centerX + (position.x - width / 2f) / pxPerCell).toInt()
         val y = floor(centerY + (position.y - height / 2f) / pxPerCell).toInt()
         val target = Cell(x, y)
-        if (erasing && target in cells) { cells = cells - target; rendellModified = true }
-        if (!erasing && target !in cells) { cells = cells + target; rendellModified = true }
+        if (erasing && target in cells) { cells = cells - target; rendellModified = true; checkpoints = emptyList() }
+        if (!erasing && target !in cells) { cells = cells + target; rendellModified = true; checkpoints = emptyList() }
     }
     var rendellLoaded by remember { mutableStateOf(false) }
     var showInspector by remember { mutableStateOf(false) }
@@ -78,6 +79,7 @@ private fun LargeLifeScreen() {
         cells = pattern.cells
         rendellLoaded = true
         rendellModified = false
+        checkpoints = listOf(LifeCheckpoint.from(0, pattern.cells))
         showInspector = true
         generation = 0
         centerX = pattern.width / 2f
@@ -190,6 +192,39 @@ private fun LargeLifeScreen() {
             }) { Text(if (jumping) "Computing..." else "Jump") }
         }
         Text("Generation $generation · ${cells.size} live cells · B3/S23, no wrapping", style = MaterialTheme.typography.bodySmall)
+        if (rendellLoaded && !rendellModified) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Button(enabled = !jumping && !importInProgress, onClick = {
+                    playing = false
+                    jumping = true
+                    scope.launch {
+                        try {
+                            val steps = RendellTiming.untilNextCycle(generation)
+                                .let { if (it == 0) RendellTiming.GENERATIONS_PER_CYCLE else it }
+                            val source = cells
+                            val next = withContext(Dispatchers.Default) {
+                                fastEngine.advance(source, steps)
+                            }
+                            cells = next
+                            generation += steps
+                            checkpoints = (checkpoints + LifeCheckpoint.from(generation, next)).takeLast(16)
+                            error = null
+                        } catch (e: Exception) {
+                            error = "Cycle jump failed: ${e.message}"
+                        } finally { jumping = false }
+                    }
+                }) { Text(if (jumping) "Computing..." else "Next TM cycle") }
+                OutlinedButton(enabled = !jumping, onClick = {
+                    checkpoints = (checkpoints + LifeCheckpoint.from(generation, cells)).takeLast(16)
+                }) { Text("Snapshot") }
+            }
+            if (checkpoints.isNotEmpty()) {
+                Text("Recent checkpoints (observed Life states)", style = MaterialTheme.typography.labelMedium)
+                Text(checkpoints.takeLast(3).joinToString("  ·  ") {
+                    "g${it.generation}: ${it.population} cells"
+                }, style = MaterialTheme.typography.bodySmall)
+            }
+        }
         if (rendellLoaded) {
             TextButton(onClick = { showInspector = !showInspector }) {
                 Text(if (showInspector) "Hide Turing inspector" else "Show Turing inspector")
