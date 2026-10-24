@@ -4,6 +4,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -44,6 +46,17 @@ private fun LargeLifeScreen() {
     var centerX by remember { mutableFloatStateOf(1.5f) }
     var centerY by remember { mutableFloatStateOf(1.5f) }
     var error by remember { mutableStateOf<String?>(null) }
+    var drawing by remember { mutableStateOf(false) }
+    var erasing by remember { mutableStateOf(false) }
+    fun editAt(position: Offset, width: Float, height: Float) {
+        // Canvas coordinates are screen pixels; Life coordinates are unbounded.
+        if (pxPerCell < 4f) return
+        val x = floor(centerX + (position.x - width / 2f) / pxPerCell).toInt()
+        val y = floor(centerY + (position.y - height / 2f) / pxPerCell).toInt()
+        val target = Cell(x, y)
+        if (erasing && target in cells) cells = cells - target
+        if (!erasing && target !in cells) cells = cells + target
+    }
     var importInProgress by remember { mutableStateOf(false) }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -81,9 +94,30 @@ private fun LargeLifeScreen() {
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Large Conway world", style = MaterialTheme.typography.titleLarge)
         Text("Generation $generation · ${cells.size} live cells · B3/S23, no wrapping", style = MaterialTheme.typography.bodySmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = {
+                drawing = !drawing
+                if (drawing) { playing = false; pxPerCell = pxPerCell.coerceAtLeast(6f) }
+            }) { Text(if (drawing) "Pan/Zoom" else "Draw") }
+            if (drawing) OutlinedButton(onClick = { erasing = !erasing }) {
+                Text(if (erasing) "Erase" else "Paint")
+            }
+        }
         Canvas(
             Modifier.fillMaxWidth().weight(1f)
-                .pointerInput(Unit) {
+                .then(if (drawing) Modifier
+                    .pointerInput(erasing, pxPerCell, centerX, centerY) {
+                        detectTapGestures { editAt(it, size.width.toFloat(), size.height.toFloat()) }
+                    }
+                    .pointerInput(erasing, pxPerCell, centerX, centerY) {
+                        detectDragGestures(
+                            onDragStart = { editAt(it, size.width.toFloat(), size.height.toFloat()) },
+                            onDrag = { change, _ ->
+                                change.consume()
+                                editAt(change.position, size.width.toFloat(), size.height.toFloat())
+                            }
+                        )
+                    } else Modifier.pointerInput(Unit) {
                     detectTransformGestures { centroid, pan, zoom, _ ->
                         val oldScale = pxPerCell
                         val nextScale = (oldScale * zoom).coerceIn(.25f, 60f)
@@ -94,7 +128,7 @@ private fun LargeLifeScreen() {
                         centerY -= pan.y / nextScale + dy * (1f / nextScale - 1f / oldScale)
                         pxPerCell = nextScale
                     }
-                }
+                })
         ) {
             drawRect(Color(0xFF102334))
             val left = centerX - size.width / (2f * pxPerCell)
@@ -124,7 +158,7 @@ private fun LargeLifeScreen() {
                 centerX = 1.5f; centerY = 1.5f; pxPerCell = 12f; generation = 0
             }) { Text("Glider") }
         }
-        Text("Pinch to zoom · drag to pan · RLE files run under standard Life rules", style = MaterialTheme.typography.bodySmall)
+        Text(if (drawing) "Tap/drag to edit individual cells · Pan/Zoom to navigate" else "Pinch to zoom · drag to pan · import RLE for large patterns", style = MaterialTheme.typography.bodySmall)
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
     }
 }
