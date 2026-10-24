@@ -23,12 +23,12 @@ import kotlin.math.sin
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MaterialTheme(colorScheme = darkColorScheme()) { LifeScreen() } }
+        setContent { MaterialTheme(colorScheme = darkColorScheme()) { ConwayApp() } }
     }
 }
 
 @Composable
-private fun LifeScreen() {
+fun LifeScreen() {
     val life = remember { Life() }
     var cells by remember { mutableStateOf(life.glider()) }
     var running by remember { mutableStateOf(false) }

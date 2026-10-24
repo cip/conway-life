@@ -21,3 +21,8 @@ References:
 6. Upgrade signing/versionCode remains separately tracked: https://github.com/cip/conway-life/issues/2.
 
 **A passing build of this foundation does not mean a Turing machine is already running in the app.**
+
+## Phase 2: interactive large world
+The application now has a **Large world** tab with pan/zoom, basic sparse Life stepping, and a file picker for standard B3/S23 RLE patterns (up to 2 MB / 100,000 live cells). This is intentionally a first iteration, not HashLife. At low zoom levels, it draws only in-view live cells but iterates across all live cells. Imports are file-based, not bundled.
+
+**Safety/performance limitations:** Slow simulation for large patterns; not appropriate yet to run or benchmark the full Rendell Turing machine. No annotations, no RLE export, no guarantee that 2MB input bound covers all possible input formats. A proper Turing machine preset and HashLife remain open.
