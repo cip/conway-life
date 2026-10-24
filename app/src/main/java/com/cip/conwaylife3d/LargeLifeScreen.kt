@@ -79,6 +79,9 @@ private fun LargeLifeScreen() {
     }
     var rendellLoaded by remember { mutableStateOf(false) }
     var showInspector by remember { mutableStateOf(false) }
+    var showTapeInput by remember { mutableStateOf(false) }
+    var tapeLeftDraft by remember { mutableStateOf("") }
+    var tapeRightDraft by remember { mutableStateOf("11") }
     var importInProgress by remember { mutableStateOf(false) }
     fun loadPattern(pattern: LifeRle.Pattern) {
         require(pattern.cells.size == 36_549 && pattern.width == 1714 && pattern.height == 1647) {
@@ -91,6 +94,9 @@ private fun LargeLifeScreen() {
         rendellModified = false
         checkpoints = listOf(LifeCheckpoint.from(0, pattern.cells))
         showInspector = true
+        tapeLeftDraft = ""
+        tapeRightDraft = "11"
+        showTapeInput = false
         generation = 0
         centerX = pattern.width / 2f
         centerY = pattern.height / 2f
@@ -237,6 +243,19 @@ private fun LargeLifeScreen() {
                 Text(checkpoints.takeLast(3).joinToString("  ·  ") {
                     "g${it.generation}: ${it.population} cells"
                 }, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        if (rendellLoaded) {
+            TextButton(onClick = { showTapeInput = !showTapeInput }) {
+                Text(if (showTapeInput) "Hide input editor" else "Prepare tape input")
+            }
+            if (showTapeInput) {
+                RendellTapeDraft(
+                    left = tapeLeftDraft,
+                    right = tapeRightDraft,
+                    onLeftChange = { tapeLeftDraft = it },
+                    onRightChange = { tapeRightDraft = it }
+                )
             }
         }
         if (rendellLoaded) {
