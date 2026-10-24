@@ -29,3 +29,8 @@ The application now has a **Large world** tab with pan/zoom, basic sparse Life s
 
 ## Phase 3: on-demand Rendell preset
 The Large World screen exposes **Load Rendell Turing Machine**, downloading `https://conwaylife.com/patterns/turingmachine.rle` on demand over HTTPS, parsing the official B3/S23 RLE, checking the expected 1714 × 1647 bounding rectangle and 36,549 live cells, and framing the imported construction. This is not yet a bundled offline pattern. The sparse engine still does not implement HashLife; interactive stepping of the full machine will be slow. Pending: verify source response and pattern validation on a real device, add reliable offline asset, benchmarks and HashLife acceleration. Source: https://conwaylife.com/wiki/Turing_machine
+
+## Inspector v1 (read-only, no fabricated tape)
+Rendell mode now shows the real Life generation/population plus a clock estimate: 11,040 Life generations per TM cycle, as documented by Rendell. Its demonstration begins with two ones and produces four after 16 cycles. This **does not decode tape values**. Display an explicit 'not decoded' status rather than guessing output. The cycle estimate is invalid if the user modifies any cell or loads a non-original state. Next phases: independently documented stack location annotations; sample and decode glider streams; exact snapshots of each state and tape values cross-verified with a second implementation (e.g. Golly). Only then offer arbitrary input editing.
+
+Reference: https://www.rendell-attic.org/gol/tm.htm
