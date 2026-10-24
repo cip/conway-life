@@ -1,0 +1,44 @@
+name: Rendell independent reference
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  golly-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Install Golly and Android SDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y golly
+          echo "y" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0"
+      - name: Prepare original Rendell fixture
+        run: |
+          mkdir -p build/reference
+          curl --fail --location --retry 3 --silent --show-error https://copy.sh/life/examples/turingmachine.rle -o build/reference/input.rle
+          grep -Eiq 'x[[:space:]]*=[[:space:]]*1714, y[[:space:]]*=[[:space:]]*1647' build/reference/input.rle
+      - name: Advance with independent Golly simulator
+        run: |
+          bgolly -m 16384 -o build/reference/reference.rle build/reference/input.rle
+          test -s build/reference/reference.rle
+      - name: Compare all cell coordinates
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest --tests '*RendellReferenceTest*' -Drendell.input="$PWD/build/reference/input.rle" -Drendell.reference="$PWD/build/reference/reference.rle"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: rendell-reference-diagnostics
+          path: |
+            build/reference/reference.rle
+            app/build/test-results/testDebugUnitTest/
