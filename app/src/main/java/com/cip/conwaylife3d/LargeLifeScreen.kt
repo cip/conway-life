@@ -9,6 +9,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
+import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -39,6 +42,7 @@ fun ConwayApp() {
 private fun LargeLifeScreen() {
     val context = LocalContext.current
     val engine = remember { SparseLife() }
+    val scope = rememberCoroutineScope()
     var cells by remember { mutableStateOf(setOf(Cell(1,0), Cell(2,1), Cell(0,2), Cell(1,2), Cell(2,2))) }
     var generation by remember { mutableIntStateOf(0) }
     var playing by remember { mutableStateOf(false) }
@@ -58,6 +62,53 @@ private fun LargeLifeScreen() {
         if (!erasing && target !in cells) cells = cells + target
     }
     var importInProgress by remember { mutableStateOf(false) }
+    fun loadPattern(pattern: LifeRle.Pattern) {
+        require(pattern.cells.size == 36_549 && pattern.width == 1714 && pattern.height == 1647) {
+            "Rendell pattern dimensions/population did not match expected values"
+        }
+        playing = false
+        drawing = false
+        cells = pattern.cells
+        generation = 0
+        centerX = pattern.width / 2f
+        centerY = pattern.height / 2f
+        pxPerCell = .25f
+        error = null
+    }
+    fun downloadRendell() {
+        playing = false
+        importInProgress = true
+        scope.launch {
+            try {
+                val pattern = withContext(Dispatchers.IO) {
+                    val conn = URL("https://conwaylife.com/patterns/turingmachine.rle").openConnection() as HttpsURLConnection
+                    conn.connectTimeout = 12_000
+                    conn.readTimeout = 20_000
+                    conn.instanceFollowRedirects = false
+                    try {
+                        require(conn.responseCode == 200) { "LifeWiki returned HTTP ${conn.responseCode}" }
+                        val bytes = conn.inputStream.use { input ->
+                            val out = java.io.ByteArrayOutputStream()
+                            val buffer = ByteArray(8192)
+                            while (true) {
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                require(out.size() + count <= 2_000_000) { "Pattern file too large" }
+                                out.write(buffer, 0, count)
+                            }
+                            out.toByteArray()
+                        }
+                        LifeRle.decode(bytes.toString(Charsets.UTF_8))
+                    } finally { conn.disconnect() }
+                }
+                loadPattern(pattern)
+            } catch (e: Exception) {
+                error = "Could not load Rendell's machine: ${e.message}"
+            } finally {
+                importInProgress = false
+            }
+        }
+    }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             playing = false
@@ -150,6 +201,11 @@ private fun LargeLifeScreen() {
             OutlinedButton(onClick = { playing = false; cells = engine.next(cells); generation++ }) { Text("Step") }
             OutlinedButton(onClick = { playing = false; cells = emptySet(); generation = 0 }) { Text("Clear") }
         }
+        OutlinedButton(onClick = { downloadRendell() }, enabled = !importInProgress) {
+            Text(if (importInProgress) "Loading pattern..." else "Load Rendell Turing Machine")
+        }
+        Text("36,549 cells · 1714×1647 · downloaded from LifeWiki. Large patterns can advance slowly.",
+            style = MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(onClick = { playing = false; filePicker.launch("*/*") }, enabled = !importInProgress) { Text("Import RLE") }
             OutlinedButton(onClick = {
