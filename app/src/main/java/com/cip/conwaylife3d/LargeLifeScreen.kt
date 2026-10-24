@@ -42,6 +42,10 @@ fun ConwayApp() {
 private fun LargeLifeScreen() {
     val context = LocalContext.current
     val engine = remember { SparseLife() }
+    val fastEngine = remember { HashLife() }
+    var useHashLife by remember { mutableStateOf(true) }
+    var jumping by remember { mutableStateOf(false) }
+    var jumpSize by remember { mutableIntStateOf(128) }
     val scope = rememberCoroutineScope()
     var cells by remember { mutableStateOf(setOf(Cell(1,0), Cell(2,1), Cell(0,2), Cell(1,2), Cell(2,2))) }
     var generation by remember { mutableIntStateOf(0) }
@@ -137,7 +141,7 @@ private fun LargeLifeScreen() {
         }
     }
     LaunchedEffect(playing) {
-        while (playing) {
+        while (playing && !jumping) {
             delay(150L)
             cells = withContext(Dispatchers.Default) { engine.next(cells) }
             generation++
@@ -145,6 +149,38 @@ private fun LargeLifeScreen() {
     }
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Large Conway world", style = MaterialTheme.typography.titleLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("HashLife", style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = useHashLife, onCheckedChange = { useHashLife = it; playing = false })
+            Text("jump ${jumpSize}", style = MaterialTheme.typography.bodySmall)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { jumpSize = (jumpSize / 2).coerceAtLeast(1) }) { Text("−") }
+            OutlinedButton(onClick = { jumpSize = (jumpSize * 2).coerceAtMost(16384) }) { Text("+") }
+            Button(enabled = !jumping && !importInProgress, onClick = {
+                playing = false
+                jumping = true
+                scope.launch {
+                    try {
+                        val start = cells
+                        val steps = jumpSize
+                        val next = withContext(Dispatchers.Default) {
+                            if (useHashLife) fastEngine.advance(start, steps)
+                            else {
+                                var state = start
+                                repeat(steps) { state = engine.next(state) }
+                                state
+                            }
+                        }
+                        cells = next
+                        generation += steps
+                        error = null
+                    } catch (e: Exception) {
+                        error = "Jump failed: ${e.message}"
+                    } finally { jumping = false }
+                }
+            }) { Text(if (jumping) "Computing..." else "Jump") }
+        }
         Text("Generation $generation · ${cells.size} live cells · B3/S23, no wrapping", style = MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {
