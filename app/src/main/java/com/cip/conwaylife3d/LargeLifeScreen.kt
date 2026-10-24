@@ -52,10 +52,10 @@ private fun LargeLifeScreen() {
             try {
                 val data = context.contentResolver.openInputStream(uri)?.use { input ->
                     // Avoid unbounded document loads on a handheld device.
-                    val bytes = input.readNBytes(2_000_001)
+                    val bytes = input.readBytes()
                     require(bytes.size <= 2_000_000) { "RLE file exceeds 2 MB" }
                     bytes.toString(Charsets.UTF_8)
-                } ?: error("Could not read file")
+                } ?: throw IllegalStateException("Could not read file")
                 val pattern = LifeRle.decode(data)
                 require(pattern.cells.size <= 100_000) { "Pattern has too many live cells for the basic engine" }
                 cells = pattern.cells
