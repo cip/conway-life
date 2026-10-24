@@ -19,12 +19,13 @@ object RendellTiming {
 }
 
 @Composable
-fun RendellInspector(generation: Int, population: Int) {
+fun RendellInspector(generation: Int, population: Int, originalPattern: Boolean) {
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Rendell Turing Machine · Inspector", style = MaterialTheme.typography.titleMedium)
             Text("Life generation: $generation · live cells: $population")
-            Text("Cycle estimate: ${RendellTiming.completedCycles(generation)} complete · phase ${RendellTiming.phase(generation)} / 11,040")
+            if (originalPattern) Text("Cycle estimate: ${RendellTiming.completedCycles(generation)} complete · phase ${RendellTiming.phase(generation)} / 11,040")
+            else Text("Original program changed: machine-cycle estimate unavailable.")
             Text("Reference demo: two 1s on the right-hand tape become four after 16 cycles.",
                 style = MaterialTheme.typography.bodySmall)
             Text("Input tape: not decoded · Output tape: not decoded",
