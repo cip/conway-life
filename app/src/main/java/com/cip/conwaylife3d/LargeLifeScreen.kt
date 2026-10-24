@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.onSizeChanged
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -44,6 +45,9 @@ private fun LargeLifeScreen() {
     val engine = remember { SparseLife() }
     val fastEngine = remember { HashLife() }
     var useHashLife by remember { mutableStateOf(true) }
+    var fullscreen by remember { mutableStateOf(false) }
+    var canvasWidth by remember { mutableIntStateOf(1) }
+    var canvasHeight by remember { mutableIntStateOf(1) }
     var jumping by remember { mutableStateOf(false) }
     var jumpSize by remember { mutableIntStateOf(128) }
     var checkpoints by remember { mutableStateOf(listOf<LifeCheckpoint>()) }
@@ -58,6 +62,12 @@ private fun LargeLifeScreen() {
     var drawing by remember { mutableStateOf(false) }
     var erasing by remember { mutableStateOf(false) }
     var rendellModified by remember { mutableStateOf(false) }
+    fun fitWorld() {
+        val view = LifeViewport.fit(cells, canvasWidth, canvasHeight)
+        centerX = view.centerX
+        centerY = view.centerY
+        pxPerCell = view.pxPerCell
+    }
     fun editAt(position: Offset, width: Float, height: Float) {
         // Canvas coordinates are screen pixels; Life coordinates are unbounded.
         if (pxPerCell < 4f) return
@@ -158,7 +168,11 @@ private fun LargeLifeScreen() {
         }
     }
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Large Conway world", style = MaterialTheme.typography.titleLarge)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(if (fullscreen) "Large world · g$generation" else "Large Conway world", style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = { fullscreen = !fullscreen }) { Text(if (fullscreen) "Controls" else "Fullscreen") }
+        }
+        if (!fullscreen) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("HashLife", style = MaterialTheme.typography.bodyMedium)
             Switch(checked = useHashLife, onCheckedChange = { useHashLife = it; playing = false })
@@ -242,8 +256,12 @@ private fun LargeLifeScreen() {
                 Text(if (erasing) "Erase" else "Paint")
             }
         }
+        }
         Canvas(
-            Modifier.fillMaxWidth().weight(1f)
+            Modifier.fillMaxWidth().weight(1f).onSizeChanged {
+                canvasWidth = it.width
+                canvasHeight = it.height
+            }
                 .then(if (drawing) Modifier
                     .pointerInput(erasing, pxPerCell, centerX, centerY) {
                         detectTapGestures { editAt(it, size.width.toFloat(), size.height.toFloat()) }
@@ -285,10 +303,12 @@ private fun LargeLifeScreen() {
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedButton(onClick = { fitWorld() }) { Text("Fit") }
             Button(onClick = { playing = !playing }) { Text(if (playing) "Pause" else "Start") }
             OutlinedButton(onClick = { playing = false; cells = engine.next(cells); generation++ }) { Text("Step") }
             OutlinedButton(onClick = { playing = false; cells = emptySet(); generation = 0 }) { Text("Clear") }
         }
+        if (!fullscreen) {
         OutlinedButton(onClick = { downloadRendell() }, enabled = !importInProgress) {
             Text(if (importInProgress) "Loading pattern..." else "Load Rendell Turing Machine")
         }
@@ -303,6 +323,7 @@ private fun LargeLifeScreen() {
             }) { Text("Glider") }
         }
         Text(if (drawing) "Tap/drag to edit individual cells · Pan/Zoom to navigate" else "Pinch to zoom · drag to pan · import RLE for large patterns", style = MaterialTheme.typography.bodySmall)
+        }
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
     }
 }
