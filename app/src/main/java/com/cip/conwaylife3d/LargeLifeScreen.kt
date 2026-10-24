@@ -65,6 +65,8 @@ private fun LargeLifeScreen() {
         if (erasing && target in cells) cells = cells - target
         if (!erasing && target !in cells) cells = cells + target
     }
+    var rendellLoaded by remember { mutableStateOf(false) }
+    var showInspector by remember { mutableStateOf(false) }
     var importInProgress by remember { mutableStateOf(false) }
     fun loadPattern(pattern: LifeRle.Pattern) {
         require(pattern.cells.size == 36_549 && pattern.width == 1714 && pattern.height == 1647) {
@@ -73,6 +75,8 @@ private fun LargeLifeScreen() {
         playing = false
         drawing = false
         cells = pattern.cells
+        rendellLoaded = true
+        showInspector = true
         generation = 0
         centerX = pattern.width / 2f
         centerY = pattern.height / 2f
@@ -127,6 +131,8 @@ private fun LargeLifeScreen() {
                 val pattern = LifeRle.decode(data)
                 require(pattern.cells.size <= 100_000) { "Pattern has too many live cells for the basic engine" }
                 cells = pattern.cells
+                rendellLoaded = false
+                showInspector = false
                 generation = 0
                 drawing = false
                 centerX = pattern.width / 2f
@@ -182,6 +188,14 @@ private fun LargeLifeScreen() {
             }) { Text(if (jumping) "Computing..." else "Jump") }
         }
         Text("Generation $generation · ${cells.size} live cells · B3/S23, no wrapping", style = MaterialTheme.typography.bodySmall)
+        if (rendellLoaded) {
+            TextButton(onClick = { showInspector = !showInspector }) {
+                Text(if (showInspector) "Hide Turing inspector" else "Show Turing inspector")
+            }
+            if (showInspector) {
+                RendellInspector(generation = generation, population = cells.size)
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {
                 drawing = !drawing
@@ -248,7 +262,7 @@ private fun LargeLifeScreen() {
             OutlinedButton(onClick = {
                 playing = false
                 cells = setOf(Cell(1,0), Cell(2,1), Cell(0,2), Cell(1,2), Cell(2,2))
-                centerX = 1.5f; centerY = 1.5f; pxPerCell = 12f; generation = 0
+                centerX = 1.5f; centerY = 1.5f; pxPerCell = 12f; generation = 0; rendellLoaded = false; showInspector = false
             }) { Text("Glider") }
         }
         Text(if (drawing) "Tap/drag to edit individual cells · Pan/Zoom to navigate" else "Pinch to zoom · drag to pan · import RLE for large patterns", style = MaterialTheme.typography.bodySmall)
