@@ -27,7 +27,7 @@ import kotlin.math.floor
 @Composable
 fun ConwayApp() {
     var largeWorld by remember { mutableStateOf(false) }
-    Column {
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { largeWorld = false }) { Text("48×48 3D") }
             TextButton(onClick = { largeWorld = true }) { Text("Large world") }
@@ -81,7 +81,7 @@ private fun LargeLifeScreen() {
         scope.launch {
             try {
                 val pattern = withContext(Dispatchers.IO) {
-                    val conn = URL("https://conwaylife.com/patterns/turingmachine.rle").openConnection() as HttpsURLConnection
+                    val conn = URL("https://copy.sh/life/examples/turingmachine.rle").openConnection() as HttpsURLConnection
                     conn.connectTimeout = 12_000
                     conn.readTimeout = 20_000
                     conn.instanceFollowRedirects = false
@@ -124,6 +124,7 @@ private fun LargeLifeScreen() {
                 require(pattern.cells.size <= 100_000) { "Pattern has too many live cells for the basic engine" }
                 cells = pattern.cells
                 generation = 0
+                drawing = false
                 centerX = pattern.width / 2f
                 centerY = pattern.height / 2f
                 pxPerCell = (300f / maxOf(pattern.width, pattern.height)).coerceIn(.25f, 20f)

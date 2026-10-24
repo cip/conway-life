@@ -33,7 +33,7 @@ object LifeRle {
         val height = header.groupValues[2].toInt()
         require(width > 0 && height > 0) { "Invalid pattern dimensions" }
         val rule = header.groupValues[3]
-        require(rule.isEmpty() || rule.equals("B3/S23", true) || rule.equals("23/3", true)) {
+        require(rule.isEmpty() || rule.equals("B3/S23", true) || rule.equals("23/3", true) || rule.equals("S23/B3", true)) {
             "Only Conway B3/S23 patterns are supported"
         }
         val live = HashSet<Cell>()

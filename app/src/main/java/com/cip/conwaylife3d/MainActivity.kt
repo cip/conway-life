@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,6 +38,17 @@ fun LifeScreen() {
     var speed by remember { mutableFloatStateOf(8f) }
     var angle by remember { mutableFloatStateOf(.65f) }
     var tilt by remember { mutableFloatStateOf(.85f) }
+    var editing by remember { mutableStateOf(false) }
+    var erasing by remember { mutableStateOf(false) }
+    fun paint(position: Offset, width: Float, height: Float) {
+        val cellWidth = min(width, height) / 48f
+        val x = ((position.x - (width - cellWidth * 48) / 2f) / cellWidth).toInt()
+        val y = ((position.y - (height - cellWidth * 48) / 2f) / cellWidth).toInt()
+        if (position.x < (width - cellWidth * 48) / 2f || position.y < (height - cellWidth * 48) / 2f) return
+        if (x !in 0 until 48 || y !in 0 until 48) return
+        val index = y * 48 + x
+        if (cells[index] != !erasing) cells = cells.copyOf().also { it[index] = !erasing }
+    }
     LaunchedEffect(running, speed) {
         while (running) {
             delay((1000f / speed).toLong())
@@ -45,15 +58,41 @@ fun LifeScreen() {
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Conway Life 3D", style = MaterialTheme.typography.headlineMedium)
         Text("48 × 48  ·  Generation $generation  ·  ${cells.count { it }} alive")
-        Canvas(
-            Modifier.fillMaxWidth().weight(1f).pointerInput(Unit) {
-                detectDragGestures { change, drag ->
-                    change.consume()
-                    angle += drag.x * .012f
-                    tilt = (tilt + drag.y * .006f).coerceIn(.25f, 1.35f)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { editing = !editing; if (editing) running = false }) {
+                Text(if (editing) "Done drawing" else "Draw cells")
+            }
+            if (editing) {
+                OutlinedButton(onClick = { erasing = !erasing }) {
+                    Text(if (erasing) "Erase" else "Paint")
                 }
             }
-        ) { renderLife(cells, angle, tilt) }
+        }
+        Canvas(
+            Modifier.fillMaxWidth().weight(1f)
+                .then(if (editing) Modifier
+                    .pointerInput(erasing) {
+                        detectTapGestures { position -> paint(position, size.width.toFloat(), size.height.toFloat()) }
+                    }
+                    .pointerInput(erasing) {
+                        detectDragGestures(
+                            onDragStart = { position -> paint(position, size.width.toFloat(), size.height.toFloat()) },
+                            onDrag = { change, _ ->
+                                change.consume()
+                                paint(change.position, size.width.toFloat(), size.height.toFloat())
+                            }
+                        )
+                    }
+                    else Modifier.pointerInput(Unit) {
+                        detectDragGestures { change, drag ->
+                            change.consume()
+                            angle += drag.x * .012f
+                            tilt = (tilt + drag.y * .006f).coerceIn(.25f, 1.35f)
+                        }
+                    })
+        ) {
+            if (editing) renderEditor(cells) else renderLife(cells, angle, tilt)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { running = !running }) { Text(if (running) "Pause" else "Start") }
             OutlinedButton(onClick = { running = false; cells = life.next(cells); generation++ }) { Text("Step") }
@@ -65,7 +104,7 @@ fun LifeScreen() {
         }
         Text("Speed: ${speed.toInt()} generations/s")
         Slider(value = speed, onValueChange = { speed = it }, valueRange = 1f..30f)
-        Text("Drag the board to rotate and tilt the camera", style = MaterialTheme.typography.bodySmall)
+        Text(if (editing) "Tap or drag to ${if (erasing) "erase" else "paint"} cells · pause to edit later" else "Drag to rotate camera · choose Draw cells to edit", style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -100,5 +139,25 @@ private fun DrawScope.renderLife(cells: BooleanArray, angle: Float, tilt: Float)
         face(Color(0xFF0E647B), Triple(b,d,0f), Triple(a,d,0f), Triple(a,d,h), Triple(b,d,h))
         face(Color(0xFF0C536A), Triple(a,d,0f), Triple(a,c,0f), Triple(a,c,h), Triple(a,d,h))
         face(Color(0xFF74F9EE), Triple(a,c,h), Triple(b,c,h), Triple(b,d,h), Triple(a,d,h))
+    }
+}
+
+private fun DrawScope.renderEditor(cells: BooleanArray) {
+    val side = min(size.width, size.height)
+    val unit = side / 48f
+    val left = (size.width - side) / 2f
+    val top = (size.height - side) / 2f
+    drawRect(Color(0xFF173044), topLeft = Offset(left, top), size = Size(side, side))
+    cells.forEachIndexed { i, alive ->
+        if (alive) drawRect(
+            Color(0xFF74F9EE),
+            topLeft = Offset(left + (i % 48) * unit + .5f, top + (i / 48) * unit + .5f),
+            size = Size((unit - 1f).coerceAtLeast(.1f), (unit - 1f).coerceAtLeast(.1f))
+        )
+    }
+    for (i in 0..48) {
+        val v = i * unit
+        drawLine(Color(0xFF345267), Offset(left + v, top), Offset(left + v, top + side), strokeWidth = .5f)
+        drawLine(Color(0xFF345267), Offset(left, top + v), Offset(left + side, top + v), strokeWidth = .5f)
     }
 }
