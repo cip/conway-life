@@ -21,3 +21,15 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
 }
+
+
+// Only the dedicated reference-test CI job supplies these paths.
+tasks.withType<Test>().configureEach {
+    val input = System.getProperty("rendell.input")
+    val reference = System.getProperty("rendell.reference")
+    if (input != null) systemProperty("rendell.input", input)
+    if (reference != null) systemProperty("rendell.reference", reference)
+    if (input == null || reference == null) {
+        exclude("**/RendellReferenceTest.class")
+    }
+}
