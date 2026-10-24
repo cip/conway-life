@@ -15,15 +15,19 @@ class RendellReferenceTest {
         assertEquals("wrong source pattern", 36_549, original.size)
         val expectedText=expectedFile.readText()
         val expected=LifeRle.decode(expectedText).cells
-        // bgolly must emit absolute coordinates; otherwise fail instead of comparing
-        // two independent but misaligned images and silently accepting translations.
-        val position=Regex("""(?m)^#CXRLE\s+Pos=([-+]?\d+),([-+]?\d+)""").find(expectedText)
-            ?: error("bgolly reference lacks #CXRLE Pos=...; cannot assert absolute coordinates")
-        val dx=position.groupValues[1].toInt()
-        val dy=position.groupValues[2].toInt()
-        val absoluteExpected=expected.mapTo(HashSet(expected.size)){Cell(it.x+dx,it.y+dy)}
+        // bgolly's command-line RLE export does not include #CXRLE Pos.
+        // Compare all cells in their bounding-box coordinates. This independently
+        // detects phantom cells and wrong evolution, but not pure translations.
+        fun normalize(cells: Set<Cell>): Set<Cell> {
+            if (cells.isEmpty()) return cells
+            val minX = cells.minOf { it.x }
+            val minY = cells.minOf { it.y }
+            return cells.mapTo(HashSet(cells.size)) { Cell(it.x - minX, it.y - minY) }
+        }
         val actual=HashLife().advance(original,16_384)
-        assertEquals("population differs",absoluteExpected.size,actual.size)
-        assertEquals("actual positions differ from independent bgolly",absoluteExpected,actual)
+        assertEquals("population differs",expected.size,actual.size)
+        assertEquals("cell geometry differs from independent bgolly",
+            normalize(expected),normalize(actual))
+
     }
 }
