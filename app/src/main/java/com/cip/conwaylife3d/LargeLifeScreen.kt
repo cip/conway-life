@@ -62,11 +62,12 @@ private fun LargeLifeScreen() {
         val x = floor(centerX + (position.x - width / 2f) / pxPerCell).toInt()
         val y = floor(centerY + (position.y - height / 2f) / pxPerCell).toInt()
         val target = Cell(x, y)
-        if (erasing && target in cells) cells = cells - target
-        if (!erasing && target !in cells) cells = cells + target
+        if (erasing && target in cells) { cells = cells - target; rendellModified = true }
+        if (!erasing && target !in cells) { cells = cells + target; rendellModified = true }
     }
     var rendellLoaded by remember { mutableStateOf(false) }
     var showInspector by remember { mutableStateOf(false) }
+    var rendellModified by remember { mutableStateOf(false) }
     var importInProgress by remember { mutableStateOf(false) }
     fun loadPattern(pattern: LifeRle.Pattern) {
         require(pattern.cells.size == 36_549 && pattern.width == 1714 && pattern.height == 1647) {
@@ -76,6 +77,7 @@ private fun LargeLifeScreen() {
         drawing = false
         cells = pattern.cells
         rendellLoaded = true
+        rendellModified = false
         showInspector = true
         generation = 0
         centerX = pattern.width / 2f
@@ -193,7 +195,7 @@ private fun LargeLifeScreen() {
                 Text(if (showInspector) "Hide Turing inspector" else "Show Turing inspector")
             }
             if (showInspector) {
-                RendellInspector(generation = generation, population = cells.size)
+                RendellInspector(generation = generation, population = cells.size, originalPattern = !rendellModified)
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
