@@ -56,6 +56,7 @@ private fun LargeLifeScreen() {
     var error by remember { mutableStateOf<String?>(null) }
     var drawing by remember { mutableStateOf(false) }
     var erasing by remember { mutableStateOf(false) }
+    var rendellModified by remember { mutableStateOf(false) }
     fun editAt(position: Offset, width: Float, height: Float) {
         // Canvas coordinates are screen pixels; Life coordinates are unbounded.
         if (pxPerCell < 4f) return
@@ -67,7 +68,6 @@ private fun LargeLifeScreen() {
     }
     var rendellLoaded by remember { mutableStateOf(false) }
     var showInspector by remember { mutableStateOf(false) }
-    var rendellModified by remember { mutableStateOf(false) }
     var importInProgress by remember { mutableStateOf(false) }
     fun loadPattern(pattern: LifeRle.Pattern) {
         require(pattern.cells.size == 36_549 && pattern.width == 1714 && pattern.height == 1647) {
