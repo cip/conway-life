@@ -7,27 +7,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun RendellTapeDraft(value: String, onValueChange: (String) -> Unit) {
-    val validation = RendellTapeInput.validate(value)
+fun RendellTapeDraft(
+    left: String,
+    right: String,
+    onLeftChange: (String) -> Unit,
+    onRightChange: (String) -> Unit
+) {
+    val draft = RendellStackDraft(left, right)
+    val validation = RendellTapeInput.validate(draft)
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Tape input · draft only", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                label = { Text("Initial symbols") },
-                supportingText = { Text("Three-symbol alphabet: 0, 1, 2") },
-                isError = validation != null,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            if (validation != null) {
-                Text(validation, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            } else {
-                Text("Draft accepted: ${RendellTapeInput.normalize(value)}",
-                    style = MaterialTheme.typography.bodySmall)
-            }
-            Text("Not applied to Life cells. The loaded Rendell machine still starts with its original two 1s. Encoding a new tape requires verified coordinates and glider phases for both stacks; pressing Jump does not use this draft.",
+            Text("Two-stack input · draft only", style = MaterialTheme.typography.titleMedium)
+            Text("Enter each stack starting with the symbol nearest the read/write head.",
+                style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(value = left, onValueChange = onLeftChange,
+                label = { Text("Left of head") }, singleLine = true,
+                modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = right, onValueChange = onRightChange,
+                label = { Text("Right of head") }, singleLine = true,
+                modifier = Modifier.fillMaxWidth())
+            if (validation != null) Text(validation, color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall)
+            else Text("Draft: L=[${RendellTapeInput.normalize(left)}] · R=[${RendellTapeInput.normalize(right)}]",
+                style = MaterialTheme.typography.bodySmall)
+            Text("NOT APPLIED. Original Life preset still has two 1s to the right of the head. The tape is physically represented by two glider stacks. No cell-level encoder or decoder is verified yet.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }
